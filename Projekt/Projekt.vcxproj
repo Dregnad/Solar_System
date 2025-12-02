@@ -30,25 +30,34 @@
     <ClCompile Include="imgui_tables.cpp" />
     <ClCompile Include="imgui_widgets.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="SolarSystem.cpp" />
+    <ClCompile Include="TextureLoader.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Body.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="glad.h" />
+    <ClInclude Include="glfw3.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="SolarSystem.h" />
     <ClInclude Include="stb_image.h" />
+    <ClInclude Include="TextureLoader.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="orbit.frag" />
     <None Include="orbit.vert" />
     <None Include="planet.frag" />
     <None Include="planet.vert" />
+    <None Include="ring.frag" />
+    <None Include="ring.vert" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="earth.jpg" />
     <Image Include="earth_night.jpg" />
     <Image Include="milkway.jpg" />
+    <Image Include="moon.jpg" />
+    <Image Include="saturn_ring.png" />
     <Image Include="sun.jpg" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

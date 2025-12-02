@@ -1,8 +1,7 @@
-/*
-
 #pragma once
-#include <glad.h>
-#include <glm.hpp>
+
+// Wa¿ne: U¿ywamy glad/glad.h tak jak w main.cpp, aby unikn¹æ b³êdów kompilacji
+#include <glad/glad.h> 
 #include <vector>
 #include <cmath>
 
@@ -11,7 +10,7 @@ struct SphereMesh {
     unsigned int indexCount;
 };
 
-// Funkcja inline, aby mo¿na j¹ by³o trzymaæ w nag³ówku bez pliku .cpp
+// Funkcja inline pozwala na definicjê w pliku .h bez b³êdów linkera
 inline SphereMesh generateSphere(unsigned int X_SEGMENTS, unsigned int Y_SEGMENTS) {
     SphereMesh mesh;
     std::vector<float> data;
@@ -27,30 +26,16 @@ inline SphereMesh generateSphere(unsigned int X_SEGMENTS, unsigned int Y_SEGMENT
             float yPos = std::cos(ySegment * PI);
             float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
 
-            data.push_back(xPos); data.push_back(yPos); data.push_back(zPos); // Pos
-            data.push_back(xPos); data.push_back(yPos); data.push_back(zPos); // Normal
-            data.push_back(xSegment); data.push_back(ySegment);               // UV
+            // Pozycja
+            data.push_back(xPos); data.push_back(yPos); data.push_back(zPos);
+            // Normalna
+            data.push_back(xPos); data.push_back(yPos); data.push_back(zPos);
+            // UV (Lustrzana poprawka z Twojego main.cpp)
+            data.push_back(1.0f - xSegment); data.push_back(ySegment);
         }
     }
 
-    bool oddRow = false;
-    for (unsigned int y = 0; y < Y_SEGMENTS; ++y) {
-        if (!oddRow) {
-            for (unsigned int x = 0; x <= X_SEGMENTS; ++x) {
-                indices.push_back(y * (X_SEGMENTS + 1) + x);
-                indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
-            }
-        }
-        else {
-            for (int x = X_SEGMENTS; x >= 0; --x) {
-                indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
-                indices.push_back(y * (X_SEGMENTS + 1) + x);
-            }
-        }
-    }
-
-    // Generowanie indeksów dla GL_TRIANGLES (³atwiejsze teksturowanie ni¿ strip)
-    indices.clear();
+    // Generowanie indeksów dla GL_TRIANGLES
     for (unsigned int y = 0; y < Y_SEGMENTS; ++y) {
         for (unsigned int x = 0; x < X_SEGMENTS; ++x) {
             indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
@@ -75,17 +60,11 @@ inline SphereMesh generateSphere(unsigned int X_SEGMENTS, unsigned int Y_SEGMENT
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
 
     // Stride: 3 pos + 3 norm + 2 uv = 8 floats
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(2);
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+    int stride = 8 * sizeof(float);
+    glEnableVertexAttribArray(0); glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
+    glEnableVertexAttribArray(1); glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(2); glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
 
     mesh.indexCount = (unsigned int)indices.size();
     return mesh;
 }
-
-}
-
-*/

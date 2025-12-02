@@ -54,6 +54,12 @@
     <ClCompile Include="imgui_widgets.cpp">
       <Filter>lib</Filter>
     </ClCompile>
+    <ClCompile Include="TextureLoader.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="SolarSystem.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h">
@@ -74,6 +80,15 @@
     <ClInclude Include="stb_image.h">
       <Filter>lib</Filter>
     </ClInclude>
+    <ClInclude Include="TextureLoader.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="SolarSystem.h">
+      <Filter>src</Filter>
+    </ClInclude>
+    <ClInclude Include="glfw3.h">
+      <Filter>lib</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="planet.vert">
@@ -88,6 +103,12 @@
     <None Include="orbit.frag">
       <Filter>shaders</Filter>
     </None>
+    <None Include="ring.frag">
+      <Filter>shaders</Filter>
+    </None>
+    <None Include="ring.vert">
+      <Filter>shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <Image Include="earth.jpg">
@@ -100,6 +121,12 @@
       <Filter>textures</Filter>
     </Image>
     <Image Include="milkway.jpg">
+      <Filter>textures</Filter>
+    </Image>
+    <Image Include="moon.jpg">
+      <Filter>textures</Filter>
+    </Image>
+    <Image Include="saturn_ring.png">
       <Filter>textures</Filter>
     </Image>
   </ItemGroup>

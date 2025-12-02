@@ -1,8 +1,11 @@
 #version 330 core
 out vec4 FragColor;
 
+// Tutaj odbieramy kolor z main.cpp
+uniform vec3 orbitColor;
+
 void main()
 {
-    // Sta³y, niebieski kolor dla linii orbity
-    FragColor = vec4(0.2, 0.4, 1.0, 1.0); 
+    // Ustawiamy kolor pixela na ten odebrany, z pe³n¹ nieprzezroczystoœci¹ (1.0)
+    FragColor = vec4(orbitColor, 1.0); 
 }
