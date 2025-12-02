@@ -1,29 +1,24 @@
 #include "TextureLoader.h"
 #include <iostream>
 
-// To definiujemy TYLKO w jednym pliku .cpp w ca³ym projekcie!
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 unsigned int loadTexture(const char* path) {
-    unsigned int textureID;
-    glGenTextures(1, &textureID);
+    unsigned int textureID = 0; // Initialize to 0
 
     int width, height, nrComponents;
-    stbi_set_flip_vertically_on_load(true); // Wa¿ne dla sfery i OpenGL
+    stbi_set_flip_vertically_on_load(true);
 
     unsigned char* data = stbi_load(path, &width, &height, &nrComponents, 0);
     if (data) {
         GLenum format;
-        if (nrComponents == 1)
-            format = GL_RED;
-        else if (nrComponents == 3)
-            format = GL_RGB;
-        else if (nrComponents == 4)
-            format = GL_RGBA;
-        else
-            format = GL_RGB; // Domyœlnie
+        if (nrComponents == 1) format = GL_RED;
+        else if (nrComponents == 3) format = GL_RGB;
+        else if (nrComponents == 4) format = GL_RGBA;
+        else format = GL_RGB;
 
+        glGenTextures(1, &textureID); // Generate ID only if data exists
         glBindTexture(GL_TEXTURE_2D, textureID);
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
@@ -36,8 +31,9 @@ unsigned int loadTexture(const char* path) {
         stbi_image_free(data);
     }
     else {
-        std::cout << "Texture failed to load: " << path << std::endl;
+        std::cout << "Texture failed to load: " << path << " (Using fallback color)" << std::endl;
         stbi_image_free(data);
+        return 0; // Return 0 to indicate failure
     }
 
     return textureID;

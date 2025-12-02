@@ -57,6 +57,7 @@
     <Image Include="earth_night.jpg" />
     <Image Include="milkway.jpg" />
     <Image Include="moon.jpg" />
+    <Image Include="saturn.jpg" />
     <Image Include="saturn_ring.png" />
     <Image Include="sun.jpg" />
   </ItemGroup>

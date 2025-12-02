@@ -129,5 +129,8 @@
     <Image Include="saturn_ring.png">
       <Filter>textures</Filter>
     </Image>
+    <Image Include="saturn.jpg">
+      <Filter>textures</Filter>
+    </Image>
   </ItemGroup>
 </Project>

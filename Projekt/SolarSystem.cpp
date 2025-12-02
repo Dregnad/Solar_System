@@ -63,6 +63,11 @@ void SolarSystem::initializeTextures() {
         else if (body->name == "Moon") {
             body->diffuseMap = loadTexture("moon.jpg");
         }
+        else if (body->name == "Saturn") {
+            body->diffuseMap = loadTexture("saturn.jpg");
+            // Load the ring texture you mentioned
+            body->ringMap = loadTexture("saturn_ring.png");
+        }
         // Tutaj mo¿esz dodaæ resztê tekstur, np:
         // else if (body->name == "Mars") body->diffuseMap = loadTexture("mars.jpg");
     }

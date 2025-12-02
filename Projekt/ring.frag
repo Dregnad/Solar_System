@@ -5,19 +5,17 @@ in vec2 TexCoords;
 in vec3 FragPos;
 
 uniform sampler2D ringTexture;
-uniform vec3 lightPos; // S³oñce
+uniform vec3 lightPos; 
 
 void main()
 {
-    // Pobieramy kolor z tekstury. Tekstura musi mieæ "paski" id¹ce wzd³u¿ osi V (pionowo)
-    // Poniewa¿ w meshu u¿yliœmy V jako promienia (0=wewn¹trz, 1=zewn¹trz)
-    vec4 texColor = texture(ringTexture, vec2(TexCoords.y, 0.5)); 
-
-    // Jeœli pixel jest przezroczysty, odrzucamy go (dla ostrych krawêdzi)
+    // Use TexCoords.y for radial lookup (y=0 is inner, y=1 is outer)
+    // We use 0.5 for the X coordinate assuming the texture is a vertical gradient strip
+    vec4 texColor = texture(ringTexture, vec2(TexCoords.y, 0.5));
+    
+    // Discard transparent parts (black/alpha 0)
     if(texColor.a < 0.1)
         discard;
 
-    // Proste oœwietlenie, ¿eby pierœcieñ ciemnia³ w cieniu planety (opcjonalne)
-    // Tutaj dajemy sta³¹ jasnoœæ, bo pierœcienie s¹ jasne
     FragColor = texColor;
 }
