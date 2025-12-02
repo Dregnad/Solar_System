@@ -113,8 +113,8 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>C:\Aplikacje\lib\GLFW\include;C:\Aplikacje\lib\GLAD\include;C:\Aplikacje\lib\imgui;C:\Aplikacje\lib\imgui\backends;C:\Aplikacje\lib\GLAD\include\glad;C:\Aplikacje\lib;$(IncludePath)</IncludePath>
-    <LibraryPath>C:\Aplikacje\lib\GLFW\lib-vc2022;$(LibraryPath)</LibraryPath>
+    <IncludePath>$(ProjectDir)lib\GLFW\include;$(ProjectDir)lib\GLAD\include;$(ProjectDir)lib\imgui;$(ProjectDir)lib\imgui\backends;$(ProjectDir)lib\GLAD\include\glad;$(ProjectDir)lib;$(IncludePath)</IncludePath>
+    <LibraryPath>$(ProjectDir)lib\GLFW\lib-vc2022;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -148,7 +148,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Aplikacje\lib\GLEW\include;C:\Aplikacje\lib\GLFW\include;C:\Aplikacje\lib\glm;C:\Aplikacje\lib\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)lib\GLEW\include;$(ProjectDir)lib\GLFW\include;$(ProjectDir)lib\glm;$(ProjectDir)lib\imgui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
