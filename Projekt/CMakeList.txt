@@ -1,0 +1,30 @@
+cmake_minimum_required(VERSION 3.10)
+project(SolarSystemSim)
+
+set(CMAKE_CXX_STANDARD 17)
+
+# Find Packages (Assumes libraries are installed or provided via VCPKG/Conan)
+find_package(glfw3 REQUIRED)
+find_package(OpenGL REQUIRED)
+find_package(glm REQUIRED)
+
+# Add your local ImGui and GLAD source files here if not installed system-wide
+# set(IMGUI_DIR "path/to/imgui")
+# include_directories(${IMGUI_DIR})
+
+include_directories(include)
+
+# Logic to handle GLAD (if using a local c file)
+add_library(glad src/glad.c) 
+
+add_executable(SolarSystemSim 
+    src/main.cpp 
+    # Add ImGui sources here: imgui.cpp, imgui_impl_glfw.cpp, imgui_impl_opengl3.cpp
+)
+
+target_link_libraries(SolarSystemSim 
+    glfw 
+    OpenGL::GL 
+    glm
+    glad
+)
