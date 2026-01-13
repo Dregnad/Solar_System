@@ -53,6 +53,13 @@
     <None Include="ring.vert" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\..\..\Desktop\jupiter.jpg" />
+    <Image Include="..\..\..\..\Desktop\mars.jpg" />
+    <Image Include="..\..\..\..\Desktop\mercury.jpg" />
+    <Image Include="..\..\..\..\Desktop\neptune.jpg" />
+    <Image Include="..\..\..\..\Desktop\uranus.jpg" />
+    <Image Include="..\..\..\..\Desktop\venus.jpg" />
+    <Image Include="..\..\..\..\Downloads\plutomap2k.jpg" />
     <Image Include="earth.jpg" />
     <Image Include="earth_night.jpg" />
     <Image Include="milkway.jpg" />

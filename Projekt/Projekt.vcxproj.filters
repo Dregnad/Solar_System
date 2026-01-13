@@ -132,5 +132,26 @@
     <Image Include="saturn.jpg">
       <Filter>textures</Filter>
     </Image>
+    <Image Include="..\..\..\..\Desktop\jupiter.jpg">
+      <Filter>textures</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Desktop\mars.jpg">
+      <Filter>textures</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Desktop\mercury.jpg">
+      <Filter>textures</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Desktop\venus.jpg">
+      <Filter>textures</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Desktop\neptune.jpg">
+      <Filter>textures</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Desktop\uranus.jpg">
+      <Filter>textures</Filter>
+    </Image>
+    <Image Include="..\..\..\..\Downloads\plutomap2k.jpg">
+      <Filter>textures</Filter>
+    </Image>
   </ItemGroup>
 </Project>
