@@ -4,7 +4,7 @@
 
 SolarSystem::SolarSystem() {
 
-
+    unsigned int asteroidTexture;
 
     // Tworzenie obiektów na stercie (u¿ywaj¹c 'new'), aby ¿y³y wewn¹trz klasy
     // UWAGA: Kolejnoœæ dodawania do wektora jest wa¿na dla pêtli w main
@@ -200,6 +200,7 @@ SolarSystem::SolarSystem() {
     int numberOfAsteroids = 100; // Zacznij od 200, ¿eby sprawdziæ wydajnoœæ
 
     for (int i = 0; i < numberOfAsteroids; ++i) {
+
         // 1. Losowanie dystansu (od 2.2 do 3.4 jednostek)
         float a = 2.2f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / (3.4f - 2.2f)));
 
@@ -214,7 +215,9 @@ SolarSystem::SolarSystem() {
         float period = sqrt(pow(a, 3));
 
         // 4. Rozmiar asteroidy (losowy, ale ma³y)
-        float radius = 100.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 400.0f));
+
+// ZMIANA: Wiêkszy rozrzut rozmiarów (od 50 do 450)
+        float radius = 50.0f + static_cast<float>(rand()) / (static_cast<float>(RAND_MAX / 400.0f));
 
         std::string name = "Asteroid_" + std::to_string(i);
         CelestialBody* asteroid = new CelestialBody(name, radius, { a, e, i_angle, lan, arg, m, period }, 1.0, 0.0, sun);
@@ -224,13 +227,48 @@ SolarSystem::SolarSystem() {
 
         bodies.push_back(asteroid);
     }
+    // --- KOD DO WKLEJENIA W KONSTRUKTORZE SOLARSYSTEM (NA KOÑCU) ---
+
+    // Generujemy 5 komet
+    // --- PRAWDZIWE KOMETY (Zamiast losowych) ---
+    // Dane orbitalne: a (pó³oœ wielka w AU), e (mimoœród), i (nachylenie), ...
+
+    // 1. Kometa Halleya (1P/Halley) - Najs³ynniejsza, wraca co 76 lat
+    // a=17.8 AU, e=0.967 (bardzo wyd³u¿ona)
+    CelestialBody* halley = new CelestialBody("Comet_Halley", 60.0, { 17.834, 0.9671, 162.26, 58.42, 111.33, 38.38, 75.32 }, 1.0, 0.0, sun);
+    halley->color = glm::vec3(0.8f, 0.9f, 1.0f);
+    bodies.push_back(halley);
+
+    // 2. Kometa Enckego (2P/Encke) - Krótki okres (3.3 roku), lata blisko S³oñca
+    // a=2.2 AU, e=0.848
+    CelestialBody* encke = new CelestialBody("Comet_Encke", 40.0, { 2.214, 0.848, 11.78, 334.56, 186.54, 0.0, 3.30 }, 1.0, 0.0, sun);
+    encke->color = glm::vec3(0.7f, 0.8f, 0.9f);
+    bodies.push_back(encke);
+
+    
+
+    // 4. Kometa Borrelly’ego (19P/Borrelly) - Odwiedzona przez sondê Deep Space 1
+    CelestialBody* borrelly = new CelestialBody("Comet_Borrelly", 50.0, { 3.59, 0.624, 30.3, 75.4, 353.4, 0.0, 6.8 }, 1.0, 0.0, sun);
+    borrelly->color = glm::vec3(0.6f, 0.7f, 0.8f);
+    bodies.push_back(borrelly);
 
 
 
 }
 
 void SolarSystem::initializeTextures() {
+    unsigned int asteroidTex = loadTexture("textures/asteroid.jpg");
+    unsigned int cometTex = loadTexture("textures/comet.jpg");
     for (auto body : bodies) {
+        if (body->name.find("Asteroid") != std::string::npos) {
+            body->diffuseMap = asteroidTex;
+            continue; // Przechodzimy do nastêpnego obiektu, bo asteroida nie jest s³oñcem ani planet¹
+        }
+        if (body->name.find("Comet") != std::string::npos) {
+            body->diffuseMap = loadTexture("textures/comet.jpg"); // Upewnij siê, ¿e nazwa zmiennej tex jest ok
+            continue;
+        }
+
         if (body->name == "Sun") {
             body->diffuseMap = loadTexture("sun.jpg");
         }
@@ -250,9 +288,11 @@ void SolarSystem::initializeTextures() {
         else if (body->name == "Mars") {
             body->diffuseMap = loadTexture("mars.jpg");
         }
+       
         else if (body->name == "Jupiter") {
             body->diffuseMap = loadTexture("jupiter.jpg");
         }
+        
         else if (body->name == "Saturn") {
             body->diffuseMap = loadTexture("saturn.jpg");
             body->ringMap = loadTexture("saturn_ring.png");
@@ -266,7 +306,60 @@ void SolarSystem::initializeTextures() {
         else if (body->name == "Pluto") {
             body->diffuseMap = loadTexture("plutomap2k.jpg");
         }
+        else if (body->name == "Io") {
+            body->diffuseMap = loadTexture("textures/io.jpg");
+        }
+        else if (body->name == "Europa") {
+            body->diffuseMap = loadTexture("textures/europa.jpg");
+        }
+        else if (body->name == "Ganymede") {
+            body->diffuseMap = loadTexture("textures/ganymede.jpg");
+        }
+        else if (body->name == "Callisto") {
+            body->diffuseMap = loadTexture("textures/callisto.jpg");
+        }
+        else if (body->name == "Titan") {
+            body->diffuseMap = loadTexture("textures/titan.jpg");
+        }
+        else if (body->name == "Rhea") {
+            body->diffuseMap = loadTexture("textures/rhea.jpg");
+        }
+        else if (body->name == "Iapetus") {
+            body->diffuseMap = loadTexture("textures/iapetus.jpg");
+        }
+        else if (body->name == "Dione") {
+            body->diffuseMap = loadTexture("textures/dione.jpg");
+        }
+        else if (body->name == "Tethys") {
+            body->diffuseMap = loadTexture("textures/tethys.jpg");
+        }
+        else if (body->name == "Titania") {
+            body->diffuseMap = loadTexture("textures/titania.jpg");
+        }
+        else if (body->name == "Oberon") {
+            body->diffuseMap = loadTexture("textures/oberon.jpg");
+        }
+        else if (body->name == "Umbriel") {
+            body->diffuseMap = loadTexture("textures/umbriel.jpg");
+        }
+        else if (body->name == "Ariel") {
+            body->diffuseMap = loadTexture("textures/ariel.jpg");
+        }
+        else if (body->name == "Miranda") {
+            body->diffuseMap = loadTexture("textures/miranda.jpg");
+        }
+        else if (body->name == "Triton") {
+            body->diffuseMap = loadTexture("textures/triton.jpg");
+        }
+        else if (body->name == "Proteus") {
+            body->diffuseMap = loadTexture("textures/proteus.jpg");
+        }
+        else if (body->name == "Nereid") {
+            body->diffuseMap = loadTexture("textures/nereid.jpg");
+        }
+        
     }
+    
 }
 
 void SolarSystem::update(double currentTimeDays) {

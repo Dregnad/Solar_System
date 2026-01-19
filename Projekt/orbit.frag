@@ -1,11 +1,11 @@
 #version 330 core
 out vec4 FragColor;
 
-// Tutaj odbieramy kolor z main.cpp
-uniform vec3 orbitColor;
+// Zmiana z vec3 na vec4, aby przyj¹æ te¿ kana³ Alpha (przezroczystoœæ)
+uniform vec4 orbitColor;
 
 void main()
 {
-    // Ustawiamy kolor pixela na ten odebrany, z pe³n¹ nieprzezroczystoœci¹ (1.0)
-    FragColor = vec4(orbitColor, 1.0); 
+    // Przypisujemy kolor bezpoœrednio, bo Alpha jest ju¿ w orbitColor
+    FragColor = orbitColor;
 }

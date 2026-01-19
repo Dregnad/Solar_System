@@ -48,6 +48,29 @@ public:
     unsigned int VAO_Orbit = 0;
     std::vector<glm::vec3> orbitPath;
 
+    // --- NOWY KONSTRUKTOR DOMYŒLNY (Rozwi¹zanie Twojego b³êdu) ---
+    CelestialBody() {
+        position = glm::dvec3(0.0);
+        worldPosition = glm::dvec3(0.0);
+        color = glm::vec3(0.5f); // Domyœlny szary
+        radius = 1.0;
+        rotationPeriod = 0.0;
+        axialTilt = 0.0;
+        currentRotationAngle = 0.0;
+
+        name = "Unknown";
+        parent = nullptr;
+
+        // Wyzerowanie parametrów orbity
+        orbit = { 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0 };
+
+        diffuseMap = 0;
+        nightMap = 0;
+        ringMap = 0;
+        VAO_Orbit = 0;
+    }
+    // -------------------------------------------------------------
+
     CelestialBody(std::string n, double r, OrbitalElements o, double rotP, double tilt, CelestialBody* p = nullptr)
         : name(n), radius(r), orbit(o), rotationPeriod(rotP), axialTilt(tilt), parent(p), currentRotationAngle(0.0)
     {
@@ -55,6 +78,10 @@ public:
         nightMap = 0;
         ringMap = 0;
         color = glm::vec3(1.0f, 1.0f, 1.0f); // Default white
+
+        // Inicjalizacja wektorów, ¿eby unikn¹æ œmieci w pamiêci
+        position = glm::dvec3(0.0);
+        worldPosition = glm::dvec3(0.0);
 
         if (parent) {
             parent->children.push_back(this);
@@ -116,8 +143,18 @@ public:
     void update(double timeDays) {
         if (parent == nullptr) {
             // The Sun stays at 0,0,0
-            position = glm::dvec3(0.0);
-            worldPosition = position;
+            // Dla asteroid bez rodzica (Kuiper Belt) te¿ chcemy, ¿eby sta³y w miejscu (statyczne),
+            // ale one maj¹ ju¿ ustalon¹ worldPosition w main.cpp.
+            // Poni¿szy warunek "parent == nullptr" dotyczy S³oñca.
+            // Asteroidy z Pasa Kuipera maj¹ parent = nullptr, ale nie chcemy resetowaæ ich pozycji do 0,0,0.
+            // S³oñce rozpoznajemy po nazwie lub po tym, ¿e to ono jest w centrum (0,0,0).
+
+            if (name == "Sun") {
+                position = glm::dvec3(0.0);
+                worldPosition = position;
+            }
+            // Jeœli to obiekt Pasa Kuipera (nie ma rodzica, ale nie jest s³oñcem), 
+            // nie aktualizujemy pozycji orbitalnej, zostaje tam gdzie go postawiliœmy w main().
         }
         else {
             // Calculate Mean Anomaly based on time

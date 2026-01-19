@@ -20,6 +20,16 @@ unsigned int loadTexture(const char* path) {
 
         glGenTextures(1, &textureID); // Generate ID only if data exists
         glBindTexture(GL_TEXTURE_2D, textureID);
+
+        // --- POPRAWKA: NAPRAWIENIE CZERWONYCH KSIÊ¯YCÓW ---
+        if (nrComponents == 1) {
+            // Ustawiamy "maskê": R=Red, G=Red, B=Red, A=1.0
+            // Dziêki temu szary obrazek bêdzie szary, a nie czerwony
+            GLint swizzleMask[] = { GL_RED, GL_RED, GL_RED, GL_ONE };
+            glTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_SWIZZLE_RGBA, swizzleMask);
+        }
+        // ---------------------------------------------------
+
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
 

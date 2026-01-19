@@ -5,102 +5,124 @@
 
 struct SphereMesh {
     unsigned int VAO;
+    unsigned int VBO; // Dodano, aby trzymaæ uchwyt do bufora
+    unsigned int EBO; // Dodano, aby trzymaæ uchwyt do bufora indeksów
     unsigned int indexCount;
 };
 
-// --- FUNKCJA GENERUJ¥CA SFERÊ (DLA PLANET) ---
-inline SphereMesh generateSphere(unsigned int X_SEGMENTS, unsigned int Y_SEGMENTS) {
+// --- FUNKCJA GENERUJ¥CA SFERÊ (POPRAWIONA - SZCZELNA DLA LOW POLY) ---
+inline SphereMesh generateSphere(unsigned int sectorCount, unsigned int stackCount) {
     SphereMesh mesh;
     std::vector<float> data;
     std::vector<unsigned int> indices;
 
-    const float PI = 3.14159265359f;
+    float x, y, z, xy;                              // pozycje
+    float nx, ny, nz, lengthInv = 1.0f / 1.0f;      // normalne (promieñ = 1.0)
+    float s, t;                                     // UV
 
-    for (unsigned int x = 0; x <= X_SEGMENTS; ++x) {
-        for (unsigned int y = 0; y <= Y_SEGMENTS; ++y) {
-            float xSegment = (float)x / (float)X_SEGMENTS;
-            float ySegment = (float)y / (float)Y_SEGMENTS;
+    float sectorStep = 2 * 3.14159265359f / sectorCount;
+    float stackStep = 3.14159265359f / stackCount;
+    float sectorAngle, stackAngle;
 
-            float xPos = std::cos(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
-            float yPos = std::cos(ySegment * PI);
-            float zPos = std::sin(xSegment * 2.0f * PI) * std::sin(ySegment * PI);
+    // 1. GENEROWANIE WIERZCHO£KÓW
+    // U¿ywamy <= aby zdublowaæ wierzcho³ki na szwie (dla poprawnego teksturowania)
+    for (unsigned int i = 0; i <= stackCount; ++i)
+    {
+        stackAngle = 3.14159265359f / 2 - i * stackStep;        // od pi/2 do -pi/2
+        xy = cosf(stackAngle);             // r * cos(u)
+        z = sinf(stackAngle);              // r * sin(u)
 
-            // 1. Pozycja (x, y, z)
-            data.push_back(xPos);
-            data.push_back(yPos);
-            data.push_back(zPos);
+        for (unsigned int j = 0; j <= sectorCount; ++j)
+        {
+            sectorAngle = j * sectorStep;           // od 0 do 2pi
 
-            // 2. Normalna (to samo co pozycja dla sfery jednostkowej)
-            data.push_back(xPos);
-            data.push_back(yPos);
-            data.push_back(zPos);
+            // Pozycja
+            x = xy * cosf(sectorAngle);
+            y = xy * sinf(sectorAngle);
+            
+            // -- POSITION --
+            data.push_back(x);
+            data.push_back(y);
+            data.push_back(z);
 
-            // 3. UV (Tekstura)
-            data.push_back(1.0f - xSegment);
-            data.push_back(ySegment);
+            // -- NORMAL --
+            nx = x * lengthInv;
+            ny = y * lengthInv;
+            nz = z * lengthInv;
+            data.push_back(nx);
+            data.push_back(ny);
+            data.push_back(nz);
+
+            // -- TEX COORD --
+            s = (float)j / sectorCount;
+            t = (float)i / stackCount;
+            data.push_back(s);
+            data.push_back(t);
         }
     }
 
-    bool oddRow = false;
-    for (unsigned int y = 0; y < Y_SEGMENTS; ++y) {
-        if (!oddRow) {
-            for (unsigned int x = 0; x <= X_SEGMENTS; ++x) {
-                indices.push_back(y * (X_SEGMENTS + 1) + x);
-                indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
+    // 2. GENEROWANIE INDEKSÓW (Trójk¹ty)
+    int k1, k2;
+    for (unsigned int i = 0; i < stackCount; ++i)
+    {
+        k1 = i * (sectorCount + 1);     // pocz¹tek obecnego stosu
+        k2 = k1 + sectorCount + 1;      // pocz¹tek nastêpnego stosu
+
+        for (unsigned int j = 0; j < sectorCount; ++j, ++k1, ++k2)
+        {
+            // Dwa trójk¹ty na sektor (oprócz biegunów gdzie jest jeden)
+            if (i != 0)
+            {
+                indices.push_back(k1);
+                indices.push_back(k2);
+                indices.push_back(k1 + 1);
+            }
+
+            if (i != (stackCount - 1))
+            {
+                indices.push_back(k1 + 1);
+                indices.push_back(k2);
+                indices.push_back(k2 + 1);
             }
         }
-        else {
-            for (int x = X_SEGMENTS; x >= 0; --x) {
-                indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
-                indices.push_back(y * (X_SEGMENTS + 1) + x);
-            }
-        }
-        oddRow = !oddRow;
     }
 
-    // Generowanie indeksów dla GL_TRIANGLES (bardziej uniwersalne ni¿ Triangle Strip w tym przypadku)
-    indices.clear();
-    for (unsigned int y = 0; y < Y_SEGMENTS; ++y) {
-        for (unsigned int x = 0; x < X_SEGMENTS; ++x) {
-            indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
-            indices.push_back(y * (X_SEGMENTS + 1) + x);
-            indices.push_back(y * (X_SEGMENTS + 1) + x + 1);
+    mesh.indexCount = (unsigned int)indices.size();
 
-            indices.push_back((y + 1) * (X_SEGMENTS + 1) + x);
-            indices.push_back(y * (X_SEGMENTS + 1) + x + 1);
-            indices.push_back((y + 1) * (X_SEGMENTS + 1) + x + 1);
-        }
-    }
-
-    unsigned int VBO, EBO;
+    // 3. OQL I BUFORY
     glGenVertexArrays(1, &mesh.VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    glGenBuffers(1, &mesh.VBO);
+    glGenBuffers(1, &mesh.EBO);
 
     glBindVertexArray(mesh.VAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
     glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
 
     // Stride: 3 pos + 3 norm + 2 uv = 8 floats
-    int stride = 8 * sizeof(float);
+    long long stride = 8 * sizeof(float);
+    
+    // Position
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
-
+    
+    // Normals
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
-
+    
+    // TexCoords
     glEnableVertexAttribArray(2);
     glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
 
-    mesh.indexCount = (unsigned int)indices.size();
+    glBindVertexArray(0);
+
     return mesh;
 }
 
-// --- NOWA FUNKCJA: GENERUJ¥CA PIERŒCIEÑ (DLA SATURNA) ---
+// --- GENEROWANIE PIERŒCIENIA (SATURN) ---
 inline SphereMesh generateRing(float innerRadius, float outerRadius, int segments) {
     SphereMesh mesh;
     std::vector<float> data;
@@ -138,17 +160,16 @@ inline SphereMesh generateRing(float innerRadius, float outerRadius, int segment
         indices.push_back(innerNext);
     }
 
-    unsigned int VBO, EBO;
     glGenVertexArrays(1, &mesh.VAO);
-    glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    glGenBuffers(1, &mesh.VBO);
+    glGenBuffers(1, &mesh.EBO);
 
     glBindVertexArray(mesh.VAO);
 
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, mesh.VBO);
     glBufferData(GL_ARRAY_BUFFER, data.size() * sizeof(float), &data[0], GL_STATIC_DRAW);
 
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
 
     int stride = 8 * sizeof(float);
@@ -157,5 +178,7 @@ inline SphereMesh generateRing(float innerRadius, float outerRadius, int segment
     glEnableVertexAttribArray(2); glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
 
     mesh.indexCount = (unsigned int)indices.size();
+    glBindVertexArray(0);
+    
     return mesh;
 }
