@@ -23,7 +23,6 @@ uniform sampler2D nightTexture;
 uniform bool hasTexture;
 uniform bool hasNightTexture;
 
-// --- ECLIPSE: NOWY UNIFORM ---
 uniform float eclipseFactor; // 1.0 = S³oñce widoczne, 0.0 = S³oñce zas³oniête
 
 float random(vec2 st) {
@@ -44,9 +43,7 @@ void main()
             float zoomFactor = 1.0 - smoothstep(10.0, 45.0, fov);
             vec3 baseColor = texture(diffuseTexture, TexCoords).rgb;
             vec3 detailColor = texture(detailTexture, TexCoords * 10.0).rgb;
-            
             vec3 mixedSky = baseColor + (detailColor * zoomFactor * 0.5);
-
             float noise = random(TexCoords);
             float flash = sin(time * 2.0 + noise * 100.0);
             flash = 0.7 + 0.3 * flash;
@@ -54,12 +51,6 @@ void main()
             vec3 finalSky = mixedSky * mix(1.0, flash, brightness);
             finalSky += vec3(brightness * 0.5); 
             finalSky = pow(finalSky, vec3(1.2)); 
-            
-            // --- ECLIPSE: Przyciemnianie gwiazd podczas zaæmienia (opcjonalne) ---
-            // Gwiazdy s¹ widoczne lepiej gdy S³oñce jest zas³oniête, 
-            // ale tutaj symulujemy "oko", wiêc jeœli S³oñce znika, reszta nie musi ciemnieæ.
-            // Zostawiamy bez zmian lub mno¿ymy przez eclipseFactor dla efektu mroku.
-            
             FragColor = vec4(finalSky, 1.0);
             return;
         }
@@ -83,16 +74,7 @@ void main()
              vec3 orangeGlow = vec3(1.0, 0.6, 0.0);
              float glowIntensity = 2.0 + proximity * 2.5;
 
-            vec3 finalSunColor = baseSun + orangeGlow * rimFactor * glowIntensity;
-
-             // --- POPRAWKA REALIZMU ---
-             // eclipseFactor wp³ywa mocniej na œrodek s³oñca (baseSun), a s³abiej na koronê (orangeGlow).
-             // Dziêki temu przy zaæmieniu widaæ piêkn¹ obwódkê wokó³ czarnej planety.
-             
-             
-             
-             // 2. Dodajemy resztkow¹ koronê, jeœli jesteœmy w fazie pó³cienia (eclipseFactor < 0.5)
-             // To sprawia, ¿e krawêdŸ s³oñca "œwieci" zza planety.
+             vec3 finalSunColor = baseSun + orangeGlow * rimFactor * glowIntensity;
              float coronaResidual = (1.0 - eclipseFactor) * 0.3 * rimFactor;
              finalSunColor += vec3(1.0, 0.5, 0.2) * coronaResidual;
 
@@ -110,8 +92,6 @@ void main()
         vec3 norm = normalize(Normal);
         vec3 lightDir = normalize(lightPos - FragPos);
         float diff = max(dot(norm, lightDir), 0.0);
-        
-        // --- ECLIPSE: Chmury ciemniej¹ przy zaæmieniu ---
         diff *= eclipseFactor;
 
         vec3 cloudColor = vec3(1.0, 1.0, 1.0) * (diff * 0.9 + 0.1);
@@ -125,10 +105,6 @@ void main()
     vec3 viewDir = normalize(viewPos - FragPos);
 
     float diff = max(dot(norm, lightDir), 0.0);
-    
-    // --- ECLIPSE: Powierzchnia planety ciemnieje (jeœli cieñ pada na inne obiekty) ---
-    // W tym prostym modelu zaæmienie dotyczy kamery, wiêc to wp³ywa g³ównie na S³oñce,
-    // ale mo¿emy te¿ przyciemniæ oœwietlenie ambientowe.
     diff *= eclipseFactor; 
 
     vec3 dayColor = objectColor;
