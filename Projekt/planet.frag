@@ -74,7 +74,7 @@ void main()
              vec3 orangeGlow = vec3(1.0, 0.6, 0.0);
              float glowIntensity = 2.0 + proximity * 2.5;
 
-             vec3 finalSunColor = baseSun + orangeGlow * rimFactor * glowIntensity;
+            vec3 finalSunColor = baseSun + orangeGlow * rimFactor * glowIntensity;
              float coronaResidual = (1.0 - eclipseFactor) * 0.3 * rimFactor;
              finalSunColor += vec3(1.0, 0.5, 0.2) * coronaResidual;
 
@@ -92,6 +92,7 @@ void main()
         vec3 norm = normalize(Normal);
         vec3 lightDir = normalize(lightPos - FragPos);
         float diff = max(dot(norm, lightDir), 0.0);
+        
         diff *= eclipseFactor;
 
         vec3 cloudColor = vec3(1.0, 1.0, 1.0) * (diff * 0.9 + 0.1);
@@ -105,6 +106,8 @@ void main()
     vec3 viewDir = normalize(viewPos - FragPos);
 
     float diff = max(dot(norm, lightDir), 0.0);
+    
+
     diff *= eclipseFactor; 
 
     vec3 dayColor = objectColor;
@@ -127,7 +130,7 @@ void main()
     if (diff > 0.0) {
         vec3 halfwayDir = normalize(lightDir + viewDir);
         float spec = pow(max(dot(norm, halfwayDir), 0.0), 32.0);
-        vec3 specular = vec3(0.3) * spec * eclipseFactor; // Specular te¿ znika
+        vec3 specular = vec3(0.3) * spec * eclipseFactor; 
         finalColor += specular;
     }
 

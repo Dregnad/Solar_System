@@ -51,14 +51,14 @@
     <ClCompile Include="imgui_tables.cpp">
       <Filter>lib</Filter>
     </ClCompile>
-    <ClCompile Include="imgui_widgets.cpp">
-      <Filter>lib</Filter>
-    </ClCompile>
     <ClCompile Include="TextureLoader.cpp">
       <Filter>src</Filter>
     </ClCompile>
     <ClCompile Include="SolarSystem.cpp">
       <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\..\Downloads\imgui_widgets.cpp">
+      <Filter>lib</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

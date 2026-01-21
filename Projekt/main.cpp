@@ -17,26 +17,40 @@
 #include "Mesh.h"
 #include "TextureLoader.h"
 #include "SolarSystem.h"
-#include <algorithm> // Do sortowania
+#include <algorithm> 
+
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+// --- USTAWIENIA EKRANU I KAMERY ---
 unsigned int SCR_WIDTH = 1920;
 unsigned int SCR_HEIGHT = 1080;
+
+// Pozycja pocz¹tkowa kamery (wysoko nad uk³adem)
 Camera camera(glm::vec3(0.0f, 300.0f, 700.0f));
 float lastX = SCR_WIDTH / 2.0f;
 float lastY = SCR_HEIGHT / 2.0f;
 bool firstMouse = true;
 bool cursorLocked = false;
-const float SYSTEM_BOUNDARY_RADIUS = 45000.0f;
-const float WARNING_DISTANCE = 3000.0f;
+
+// --- STA£E SYMULACJI ---
+const float SYSTEM_BOUNDARY_RADIUS = 45000.0f; // Granica uk³adu s³onecznego (do ostrze¿eñ)
+const float WARNING_DISTANCE = 3000.0f;        // Dystans, od którego pojawia siê ostrze¿enie
+const float UNIFIED_RADIUS_SCALE = 0.00004f;   // Skala wizualna wielkoœci planet
+
+// --- ZMIENNE STANU GRY ---
 bool gameStarted = false;
 bool isPaused = false;
-int orbitMode = 1;
-CelestialBody* selectedBody = nullptr;
-bool showInfoPanel = false;
+int orbitMode = 1; // Tryb wyœwietlania orbit: 0=Brak, 1=Tylko g³ówne, 2=Wszystkie
+CelestialBody* selectedBody = nullptr; // WskaŸnik na klikniêt¹ planetê
+bool showInfoPanel = false; // Czy pokazaæ okienko z informacjami
+
+// Zmienne do wyszukiwania asteroid w GUI
 int selectedMainAsteroidIdx = 0;
 int selectedKuiperAsteroidIdx = 0;
+
+// Struktura przechowuj¹ca informacje encyklopedyczne o obiektach
 struct BodyInfo {
     std::string type;
     std::string mass;
@@ -44,15 +58,21 @@ struct BodyInfo {
     std::string fact;
 };
 std::map<std::string, BodyInfo> knowledgeBase;
-double timeMultiplier = 1.0;
-double simulationSpeed = 0.0;
-double currentTimeDays = 0.0;
+
+// --- CZAS I PRÊDKOŒÆ ---
+double timeMultiplier = 1.0;     // Mno¿nik czasu (przyspieszenie symulacji)
+double simulationSpeed = 0.0;    // Obliczona prêdkoœæ symulacji
+double currentTimeDays = 0.0;    // Aktualny czas w "dniach symulacji"
 double deltaTimeDouble = 0.0;
 double lastFrameDouble = 0.0;
-const float UNIFIED_RADIUS_SCALE = 0.00004f;
-float baseCameraSpeed = 200.0f;
-CelestialBody* focusTarget = nullptr;
-float followDistance = 200.0f;
+
+float baseCameraSpeed = 200.0f;  // Podstawowa prêdkoœæ kamery
+CelestialBody* focusTarget = nullptr; // Obiekt, który kamera ma œledziæ
+float followDistance = 200.0f;   // Dystans kamery od œledzonego obiektu
+
+
+
+// 1. Shader dla ogona komety (cieniowanie linii z zanikaniem alpha)
 const char* tailVertexShaderSource = "#version 330 core\n"
 "layout (location = 0) in vec3 aPos;\n"
 "layout (location = 1) in float aAlpha;\n"
@@ -64,6 +84,7 @@ const char* tailVertexShaderSource = "#version 330 core\n"
 "   gl_Position = projection * view * vec4(aPos, 1.0);\n"
 "   Alpha = aAlpha;\n"
 "}\0";
+
 const char* tailFragmentShaderSource = "#version 330 core\n"
 "in float Alpha;\n"
 "out vec4 FragColor;\n"
@@ -72,6 +93,8 @@ const char* tailFragmentShaderSource = "#version 330 core\n"
 "{\n"
 "   FragColor = vec4(color, Alpha);\n"
 "}\n\0";
+
+// 2. Shader dla efektu Bloom (poœwiata wokó³ S³oñca)
 const char* bloomVertexShaderSource = "#version 330 core\n"
 "layout (location = 0) in vec3 aPos;\n"
 "out vec3 FragPosLocal;\n"
@@ -83,6 +106,7 @@ const char* bloomVertexShaderSource = "#version 330 core\n"
 "    FragPosLocal = aPos;\n"
 "    gl_Position = projection * view * model * vec4(aPos, 1.0);\n"
 "}\0";
+
 const char* bloomFragmentShaderSource = "#version 330 core\n"
 "in vec3 FragPosLocal;\n"
 "out vec4 FragColor;\n"
@@ -95,14 +119,19 @@ const char* bloomFragmentShaderSource = "#version 330 core\n"
 "   alpha = pow(alpha, 2.5);\n"
 "   FragColor = vec4(bloomColor, alpha * intensity);\n"
 "}\n\0";
+
+// Struktura przechowuj¹ca historiê pozycji komety do rysowania ogona
 struct CometTrail {
     std::vector<glm::vec3> positions;
     unsigned int VAO = 0, VBO = 0;
 };
 std::map<std::string, CometTrail> cometTrails;
+
 struct QuadMesh {
     unsigned int VAO, VBO;
 };
+
+// Funkcja generuj¹ca prostok¹t dla efektów post-process lub bloom
 QuadMesh generateQuad() {
     QuadMesh quad;
     float vertices[] = {
@@ -121,6 +150,8 @@ QuadMesh generateQuad() {
     glBindVertexArray(0);
     return quad;
 }
+
+// Inicjalizacja bazy wiedzy 
 void InitKnowledgeBase() {
     knowledgeBase["Sun"] = { "Gwiazda", "1.989 x 10^30 kg", "5500 C (Powierzchnia)", "Stanowi 99.86% masy calego Ukladu Slonecznego." };
     knowledgeBase["Mercury"] = { "Planeta", "3.285 x 10^23 kg", "-173 do 427 C", "Najmniejsza planeta, nie posiada atmosfery." };
@@ -152,6 +183,8 @@ void InitKnowledgeBase() {
     knowledgeBase["Proteus"] = { "Ksiezyc (Neptun)", "4.4 x 10^19 kg", "-223 C", "Bardzo ciemny obiekt, jeden z najwiekszych niekulistych ksiezycow." };
     knowledgeBase["Nereid"] = { "Ksiezyc (Neptun)", "3.1 x 10^19 kg", "-223 C", "Posiada jedna z najbardziej wydluzonych orbit (ekscentryczna)." };
 }
+
+// Pobieranie informacji o obiekcie 
 BodyInfo GetInfo(const std::string& name) {
     if (knowledgeBase.find(name) != knowledgeBase.end()) return knowledgeBase[name];
     if (name.find("Kuiper") != std::string::npos) return { "Obiekt Pasa Kuipera", "Zroznicowana", "~ -230 C", "Lodowy obiekt transneptunowy." };
@@ -159,6 +192,8 @@ BodyInfo GetInfo(const std::string& name) {
     if (name.find("Comet") != std::string::npos) return { "Kometa", "Zmienna", "Zmienna", "Brudna sniezka z lodu i pylu." };
     return { "Cialo Niebieskie", "Nieznana", "Nieznana", "Brak szczegolowych danych w bazie." };
 }
+
+// --- Klikanie w obiekty 
 void CalculateRay(double mouseX, double mouseY, int screenW, int screenH, glm::mat4 view, glm::mat4 projection, glm::vec3& rayOrigin, glm::vec3& rayDirection) {
     float x = (2.0f * (float)mouseX) / (float)screenW - 1.0f;
     float y = 1.0f - (2.0f * (float)mouseY) / (float)screenH;
@@ -171,6 +206,7 @@ void CalculateRay(double mouseX, double mouseY, int screenW, int screenH, glm::m
     rayDirection = glm::normalize(ray_wor);
     rayOrigin = glm::vec3(glm::inverse(view)[3]);
 }
+
 bool CheckRaySphereIntersection(glm::vec3 rayOrigin, glm::vec3 rayDir, glm::vec3 sphereCenter, float sphereRadius, float& intersectionDistance) {
     glm::vec3 oc = rayOrigin - sphereCenter;
     float b = glm::dot(oc, rayDir);
@@ -184,21 +220,27 @@ bool CheckRaySphereIntersection(glm::vec3 rayOrigin, glm::vec3 rayDir, glm::vec3
     if (t2 > 0) { intersectionDistance = t2; return true; }
     return false;
 }
+
+// G³ówna funkcja wyboru obiektu po klikniêciu mysz¹
 void ProcessSelection(SolarSystem& system, double mouseX, double mouseY, int width, int height, const glm::mat4& view, const glm::mat4& proj) {
     glm::vec3 rayOrigin, rayDir;
     CalculateRay(mouseX, mouseY, width, height, view, proj, rayOrigin, rayDir);
     float closestDist = 1000000.0f;
     CelestialBody* hitBody = nullptr;
+
     for (auto body : system.bodies) {
         float visualRadius = (float)body->radius * UNIFIED_RADIUS_SCALE;
         float hitBoxMult = 1.0f;
+        // Powiêkszamy hitbox dla ma³ych asteroid, ¿eby ³atwiej by³o trafiæ
         if (body->name.find("Asteroid") != std::string::npos || body->name.find("Kuiper") != std::string::npos) hitBoxMult = 5.0f;
         else hitBoxMult = 1.1f;
+
         float dist;
         if (CheckRaySphereIntersection(rayOrigin, rayDir, body->worldPosition, visualRadius * hitBoxMult, dist)) {
             if (dist < closestDist) { closestDist = dist; hitBody = body; }
         }
     }
+
     if (hitBody != nullptr) {
         focusTarget = hitBody;
         selectedBody = hitBody;
@@ -207,6 +249,8 @@ void ProcessSelection(SolarSystem& system, double mouseX, double mouseY, int wid
         showInfoPanel = true;
     }
 }
+
+// Obs³uga ruchu myszk¹
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
     if (!gameStarted || !cursorLocked) return;
     float xpos = static_cast<float>(xposIn);
@@ -217,12 +261,15 @@ void mouse_callback(GLFWwindow* window, double xposIn, double yposIn) {
     lastX = xpos; lastY = ypos;
     camera.ProcessMouseMovement(xoffset, yoffset);
 }
+
 SolarSystem* globalSolarSystemPtr = nullptr;
 glm::mat4 globalProjection;
 glm::mat4 globalView;
+
+// Obs³uga klikniêæ 
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && gameStarted) {
-        if (ImGui::GetIO().WantCaptureMouse) return;
+        if (ImGui::GetIO().WantCaptureMouse) return; 
         double xpos, ypos;
         if (cursorLocked) { xpos = SCR_WIDTH / 2.0; ypos = SCR_HEIGHT / 2.0; }
         else { glfwGetCursorPos(window, &xpos, &ypos); }
@@ -231,9 +278,13 @@ void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
         }
     }
 }
+
+// Obs³uga klawiatury
 void processInput(GLFWwindow* window) {
     static bool escPressedLastFrame = false;
     bool escPressed = glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS;
+
+    // Wyjœcie z gry do menu lub zamkniêcie aplikacji
     if (escPressed && !escPressedLastFrame) {
         if (gameStarted) {
             gameStarted = false;
@@ -249,11 +300,16 @@ void processInput(GLFWwindow* window) {
     }
     escPressedLastFrame = escPressed;
     if (!gameStarted) return;
+
+    // Przyspieszenie kamery
     float currentSpeed = baseCameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
         currentSpeed *= 5.0f;
     camera.MovementSpeed = currentSpeed;
+
     float dt = (float)deltaTimeDouble;
+
+    // Sterowanie kamer¹
     if (focusTarget == nullptr) {
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.ProcessKeyboard(FORWARD, dt);
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.ProcessKeyboard(BACKWARD, dt);
@@ -263,6 +319,7 @@ void processInput(GLFWwindow* window) {
         if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) camera.ProcessKeyboard(DOWN, dt);
     }
     else {
+        // Zoomowanie w trybie œledzenia
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) followDistance -= currentSpeed * dt;
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) followDistance += currentSpeed * dt;
         if (focusTarget != nullptr) {
@@ -271,6 +328,8 @@ void processInput(GLFWwindow* window) {
             if (followDistance < minZoom) { followDistance = minZoom; }
         }
     }
+
+    // Prze³¹czanie kursora (blokada/odblokowanie) - klawisz TAB
     static bool tabPressed = false;
     if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS && !tabPressed) {
         cursorLocked = !cursorLocked;
@@ -280,6 +339,7 @@ void processInput(GLFWwindow* window) {
     }
     else if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_RELEASE) { tabPressed = false; }
 }
+
 void TextCentered(const char* text) {
     float win_width = ImGui::GetWindowSize().x;
     float text_width = ImGui::CalcTextSize(text).x;
@@ -287,12 +347,16 @@ void TextCentered(const char* text) {
     if (text_indent > 0.0f) ImGui::SetCursorPosX(text_indent);
     ImGui::Text("%s", text);
 }
+
+// Rysowanie ekranu startowego (Menu G³ówne)
 void RenderStartScreen(int width, int height) {
     float time = (float)glfwGetTime();
     ImGui::SetNextWindowPos(ImVec2(0, 0));
     ImGui::SetNextWindowSize(ImVec2((float)width, (float)height));
     ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus;
     ImGui::Begin("StartScreen", nullptr, window_flags);
+
+    // T³o i animacja "komety" w menu
     ImDrawList* draw_list = ImGui::GetWindowDrawList();
     draw_list->AddRectFilled(ImVec2(0, 0), ImVec2((float)width, (float)height), IM_COL32(0, 0, 0, 150));
     if (time > 2.0f) {
@@ -316,8 +380,9 @@ void RenderStartScreen(int width, int height) {
             );
         }
     }
+
     ImGui::SetCursorPosY(height * 0.3f);
-    const char* titleText = "SOLAR SYSTEM SIMULATOR";
+    const char* titleText = "SOLAR SYSTEM";
     float baseScale = 3.0f;
     float pulse = (sin(time * 3.0f) * 0.1f);
     float currentScale = baseScale + pulse;
@@ -329,6 +394,7 @@ void RenderStartScreen(int width, int height) {
     ImGui::SetCursorPosX((windowWidth - textWidth) * 0.5f);
     ImGui::TextColored(titleColor, "%s", titleText);
     ImGui::SetWindowFontScale(1.0f);
+
     ImGui::SetCursorPosY(height * 0.48f);
     float buttonWidth = 200.0f;
     float buttonHeight = 60.0f;
@@ -337,6 +403,8 @@ void RenderStartScreen(int width, int height) {
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.6f, 0.9f, 1.0f));
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.1f, 0.4f, 0.7f, 1.0f));
     ImGui::SetWindowFontScale(1.5f);
+
+    // Przycisk rozpoczêcia symulacji
     if (ImGui::Button("START SYMULACJI", ImVec2(buttonWidth, buttonHeight))) {
         gameStarted = true;
         cursorLocked = true;
@@ -349,6 +417,8 @@ void RenderStartScreen(int width, int height) {
     }
     ImGui::SetWindowFontScale(1.0f);
     ImGui::PopStyleColor(3);
+
+    // Stopka z instrukcjami
     float footerHeight = 150.0f;
     ImGui::SetCursorPosY(height - footerHeight);
     draw_list->AddRectFilled(ImVec2(0, (float)height - footerHeight), ImVec2((float)width, (float)height), IM_COL32(20, 20, 30, 200));
@@ -376,28 +446,40 @@ void RenderStartScreen(int width, int height) {
     ImGui::Columns(1);
     ImGui::End();
 }
+
 int main() {
+    // --- INICJALIZACJA GLFW ---
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
     GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
     const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
     SCR_WIDTH = mode->width;
     SCR_HEIGHT = mode->height;
+
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "Solar System - Ultimate", primaryMonitor, NULL);
     if (window == NULL) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetMouseButtonCallback(window, mouse_button_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    // --- INICJALIZACJA GLAD (³adowanie wskaŸników OpenGL) ---
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) return -1;
     glEnable(GL_DEPTH_TEST);
+
+    // --- INICJALIZACJA IMGUI ---
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
     ImGui::StyleColorsDark();
+
+    // --- KOMPILACJA SHADERÓW ---
+
+    // Shader Bloom (Poœwiata)
     unsigned int bloomVS = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(bloomVS, 1, &bloomVertexShaderSource, NULL);
     glCompileShader(bloomVS);
@@ -414,10 +496,15 @@ int main() {
     float bloomSize = 50000.0f;
     glm::vec3 bloomColor = glm::vec3(1.0f, 0.8f, 0.4f);
     float bloomIntensity = 0.05f;
+
     InitKnowledgeBase();
+
+    // £adowanie shaderów z plików zewnêtrznych
     Shader planetShader("planet.vert", "planet.frag");
     Shader orbitShader("orbit.vert", "orbit.frag");
     Shader ringShader("ring.vert", "ring.frag");
+
+    // Shader Ogona Komety
     unsigned int tailVertexShader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(tailVertexShader, 1, &tailVertexShaderSource, NULL);
     glCompileShader(tailVertexShader);
@@ -430,25 +517,34 @@ int main() {
     glLinkProgram(tailShaderProgram);
     glDeleteShader(tailVertexShader);
     glDeleteShader(tailFragmentShader);
+
+    // --- GENEROWANIE GEOMETRII ---
     SphereMesh sphere = generateSphere(64, 64);
     SphereMesh ringMesh = generateRing(1.2f, 2.2f, 128);
     std::vector<SphereMesh> asteroidMeshes;
     int minPoly = 15;
     int maxPoly = 25;
+    // Generowanie ró¿nych kszta³tów asteroid
     for (int i = 0; i < 20; i++) {
         int sectors = minPoly + (rand() % (maxPoly - minPoly + 1));
         int stacks = minPoly + (rand() % (maxPoly - minPoly + 1));
         asteroidMeshes.push_back(generateSphere(sectors, stacks));
     }
+
+    // --- INICJALIZACJA SYSTEMU S£ONECZNEGO ---
     SolarSystem solarSystem;
     solarSystem.initializeTextures();
     globalSolarSystemPtr = &solarSystem;
+
     unsigned int milkwayTex = loadTexture("milkway.jpg");
     unsigned int detailTex = loadTexture("stars_detail.jpg");
     unsigned int kuiperTex = loadTexture("kuiper.jpg");
+
     CelestialBody* sunPtr = nullptr;
     for (auto b : solarSystem.bodies) { if (b->name == "Sun") { sunPtr = b; break; } }
     srand(1234);
+
+    // Generowanie Pasa Planetoid
     for (int i = 0; i < 100; i++) {
         CelestialBody* ast = new CelestialBody();
         ast->name = "Obiekt Pasa Planetoid " + std::to_string(i);
@@ -467,6 +563,8 @@ int main() {
         ast->generateFullOrbit(64);
         solarSystem.bodies.push_back(ast);
     }
+
+    // Generowanie Pasa Kuipera
     for (int i = 0; i < 500; i++) {
         CelestialBody* kObj = new CelestialBody();
         kObj->name = "Obiekt Pasa Kuipera " + std::to_string(i);
@@ -491,34 +589,48 @@ int main() {
         kObj->generateFullOrbit(64);
         solarSystem.bodies.push_back(kObj);
     }
+
+    // Konfiguracja wstêpna shaderów
     planetShader.use();
     planetShader.setInt("diffuseTexture", 0);
     planetShader.setInt("detailTexture", 1);
     planetShader.setInt("nightTexture", 2);
     ringShader.use();
     ringShader.setInt("ringTexture", 0);
+
     float boundaryWarningAlpha = 0.0f;
+
+    // --- G£ÓWNA PÊTLA APLIKACJI ---
     while (!glfwWindowShouldClose(window)) {
+        // Obliczanie czasu klatki (Delta Time)
         double currentFrameDouble = glfwGetTime();
         deltaTimeDouble = currentFrameDouble - lastFrameDouble;
         lastFrameDouble = currentFrameDouble;
         float dt = (float)deltaTimeDouble;
+
+        // Animacja kamery w menu
         if (!gameStarted) {
             float camX = sin((float)glfwGetTime() * 0.1f) * 800.0f;
             float camZ = cos((float)glfwGetTime() * 0.1f) * 800.0f;
             camera.Position = glm::vec3(camX, 200.0f, camZ);
             camera.Front = glm::normalize(glm::vec3(0.0f) - camera.Position);
         }
+
+        // Aktualizacja fizyki
         simulationSpeed = timeMultiplier * (1.0 / 86400.0);
         processInput(window);
         if (!isPaused) {
             currentTimeDays += simulationSpeed * deltaTimeDouble;
             solarSystem.update(currentTimeDays);
         }
+
+        // Aktualizacja kamery œledz¹cej
         if (focusTarget != nullptr && gameStarted) {
             glm::vec3 targetPos = glm::vec3(focusTarget->worldPosition);
             camera.Position = targetPos - (camera.Front * followDistance);
         }
+
+        // Kolizje kamery z planetami (odpychanie)
         for (auto body : solarSystem.bodies) {
             float visualRadius = (float)body->radius * UNIFIED_RADIUS_SCALE;
             float collisionDist = visualRadius * 1.05f + 1.0f;
@@ -532,6 +644,8 @@ int main() {
                 }
             }
         }
+
+        // Ograniczenie zoomu minimalnego
         if (focusTarget == nullptr) {
             for (auto body : solarSystem.bodies) {
                 float visualRadius = (float)body->radius * UNIFIED_RADIUS_SCALE;
@@ -543,6 +657,8 @@ int main() {
                 }
             }
         }
+
+        // Granica œwiata
         float distFromSun = glm::length(camera.Position);
         if (distFromSun > SYSTEM_BOUNDARY_RADIUS) {
             camera.Position = glm::normalize(camera.Position) * SYSTEM_BOUNDARY_RADIUS;
@@ -551,9 +667,13 @@ int main() {
                 followDistance = glm::distance(camera.Position, targetPos);
             }
         }
+
+        // Czyszczenie bufora
         glClearColor(0.0f, 0.0f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
+
+        // Dynamiczny FOV (efekt prêdkoœci)
         float currentSpeed = camera.MovementSpeed;
         float speedRatio = 0.0f;
         if (currentSpeed > 2000.0f) {
@@ -570,35 +690,44 @@ int main() {
         else targetFOV = 45.0f + (55.0f * speedRatio);
         static float currentFOV = 45.0f;
         currentFOV += (targetFOV - currentFOV) * 10.0f * (float)deltaTimeDouble;
+
         glm::mat4 projection = glm::perspective(glm::radians(currentFOV), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 1000000.0f);
         glm::mat4 view = camera.GetViewMatrix();
         globalProjection = projection;
         globalView = view;
+
+        // Obliczanie zaæmieñ 
         float eclipseFactor = 1.0f;
         const float SUN_ANGULAR_RADIUS_DEG = 2.5f;
         float sunAngularRadius = glm::radians(SUN_ANGULAR_RADIUS_DEG);
         glm::vec3 camPos = camera.Position;
         glm::vec3 sunDir = glm::normalize(glm::vec3(0.0f) - camPos);
+
         for (auto body : solarSystem.bodies) {
             if (body->name == "Sun" ||
                 body->name.find("Asteroid") != std::string::npos ||
                 body->name.find("Kuiper") != std::string::npos ||
                 body->name.find("Comet") != std::string::npos) continue;
+
             glm::vec3 bodyPos = glm::vec3(body->worldPosition);
             glm::vec3 camToBody = bodyPos - camPos;
             float distToBody = glm::length(camToBody);
             float distToSun = glm::length(glm::vec3(0.0f) - camPos);
-            if (distToBody > distToSun) continue;
+
+            if (distToBody > distToSun) continue; // Cia³o za s³oñcem nie rzuca cienia
+
             float bodyVisualRadius = (float)body->radius * UNIFIED_RADIUS_SCALE;
             float bodyAngularRadius = atan(bodyVisualRadius / distToBody);
             glm::vec3 bodyDir = glm::normalize(camToBody);
             float dotProd = glm::dot(sunDir, bodyDir);
             if (dotProd > 1.0f) dotProd = 1.0f;
             float separationAngle = acos(dotProd);
+
             if (separationAngle < (sunAngularRadius + bodyAngularRadius)) {
+                // Logika przyciemniania s³oñca
                 if (bodyAngularRadius >= sunAngularRadius &&
                     separationAngle <= (bodyAngularRadius - sunAngularRadius)) {
-                    eclipseFactor = 0.0f;
+                    eclipseFactor = 0.0f; // Ca³kowite zaæmienie
                 }
                 else {
                     float startOverlap = sunAngularRadius + bodyAngularRadius;
@@ -616,12 +745,14 @@ int main() {
             }
         }
         if (eclipseFactor < 0.01f) eclipseFactor = 0.01f;
+
+        // Rysowanie Skyboxa (Droga Mleczna)
         planetShader.use();
         planetShader.setFloat("eclipseFactor", eclipseFactor);
         planetShader.setFloat("time", (float)glfwGetTime());
         planetShader.setFloat("fov", currentFOV);
         planetShader.setMat4("projection", projection);
-        glm::mat4 viewSkybox = glm::mat4(glm::mat3(view));
+        glm::mat4 viewSkybox = glm::mat4(glm::mat3(view)); 
         planetShader.setMat4("view", viewSkybox);
         planetShader.setBool("isSun", true);
         planetShader.setBool("hasTexture", true);
@@ -632,12 +763,14 @@ int main() {
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, detailTex);
         glm::mat4 modelSky = glm::mat4(1.0f);
-        modelSky = glm::scale(modelSky, glm::vec3(-5000.0f, -5000.0f, -5000.0f));
+        modelSky = glm::scale(modelSky, glm::vec3(-5000.0f, -5000.0f, -5000.0f)); // Odwrócona sfera
         planetShader.setMat4("model", modelSky);
         glDepthMask(GL_FALSE);
         glBindVertexArray(sphere.VAO);
         glDrawElements(GL_TRIANGLES, sphere.indexCount, GL_UNSIGNED_INT, 0);
         glDepthMask(GL_TRUE);
+
+        // Rysowanie Orbit
         if (orbitMode != 0) {
             orbitShader.use();
             orbitShader.setMat4("projection", projection);
@@ -650,8 +783,10 @@ int main() {
                 bool isAsteroid = (body->name.find("Asteroid") != std::string::npos);
                 bool isComet = (body->name.find("Comet") != std::string::npos);
                 bool isSmallBody = isKuiper || isAsteroid || isComet;
-                if (orbitMode == 1 && isSmallBody) continue;
-                if (orbitMode == 2 && !isSmallBody) continue;
+
+                if (orbitMode == 1 && isSmallBody) continue; // Tylko du¿e planety
+                if (orbitMode == 2 && !isSmallBody) continue; 
+
                 if (body->VAO_Orbit == 0) {
                     glGenVertexArrays(1, &body->VAO_Orbit);
                     unsigned int VBO_Orbit;
@@ -666,19 +801,24 @@ int main() {
                 glm::mat4 model = glm::mat4(1.0f);
                 if (body->parent) model = glm::translate(model, glm::vec3(body->parent->worldPosition));
                 orbitShader.setMat4("model", model);
+
                 if (isKuiper) orbitShader.setVec4("orbitColor", glm::vec4(0.1f, 0.3f, 0.5f, 0.05f));
                 else if (isAsteroid) orbitShader.setVec4("orbitColor", glm::vec4(body->color, 0.15f));
                 else if (isSmallBody) orbitShader.setVec4("orbitColor", glm::vec4(body->color, 0.3f));
                 else orbitShader.setVec4("orbitColor", glm::vec4(body->color, 0.5f));
+
                 glDrawArrays(GL_LINE_LOOP, 0, (GLsizei)body->orbitPath.size());
             }
             glDisable(GL_BLEND);
         }
+
+        // Rysowanie Planet
         planetShader.use();
         planetShader.setMat4("projection", projection);
         planetShader.setMat4("view", view);
         planetShader.setVec3("lightPos", glm::vec3(0.0f));
         planetShader.setVec3("viewPos", camera.Position);
+
         int bodyIndex = 0;
         for (auto body : solarSystem.bodies) {
             int currentIndices = 0;
@@ -693,19 +833,24 @@ int main() {
                 currentIndices = sphere.indexCount;
             }
             bodyIndex++;
+
             glm::mat4 model = glm::mat4(1.0f);
             model = glm::translate(model, glm::vec3(body->worldPosition));
             model = glm::rotate(model, glm::radians((float)body->axialTilt), glm::vec3(0, 0, 1));
             model = glm::rotate(model, glm::radians((float)body->currentRotationAngle), glm::vec3(0, 1, 0));
+
             float r_scale = (float)body->radius * UNIFIED_RADIUS_SCALE;
             float flattening = 1.0f;
             bool needsTextureCorrection = (body->name == "Jupiter" || body->name == "Saturn");
+
+            // Sp³aszczenie biegunowe planet
             if (body->name == "Earth") flattening = 0.99664f;
             else if (body->name == "Mars") flattening = 0.99412f;
             else if (body->name == "Jupiter") flattening = 0.93513f;
             else if (body->name == "Saturn") flattening = 0.90206f;
             else if (body->name == "Uranus") flattening = 0.97711f;
             else if (body->name == "Neptune") flattening = 0.98283f;
+
             if (needsTextureCorrection) {
                 model = glm::rotate(model, glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
                 model = glm::scale(model, glm::vec3(r_scale, r_scale, r_scale * flattening));
@@ -713,32 +858,40 @@ int main() {
             else {
                 model = glm::scale(model, glm::vec3(r_scale, r_scale * flattening, r_scale));
             }
+
             bool hasAtmo = false;
             glm::vec3 atmoColor = glm::vec3(0.0f);
             if (body->name == "Earth") { hasAtmo = true; atmoColor = glm::vec3(0.3f, 0.6f, 1.0f); }
             else if (body->name == "Venus") { hasAtmo = true; atmoColor = glm::vec3(0.9f, 0.7f, 0.5f); }
             else if (body->name == "Mars") { hasAtmo = true; atmoColor = glm::vec3(0.8f, 0.3f, 0.1f); }
+
             planetShader.setBool("hasAtmosphere", hasAtmo);
             planetShader.setVec3("atmosphereColorRGB", atmoColor);
             planetShader.setVec3("objectColor", body->color);
             bool isSunObj = (body->name == "Sun");
             planetShader.setBool("isSun", isSunObj);
+
             if (isSunObj) planetShader.setVec3("objectColor", glm::vec3(1.0f));
+
             if (body->diffuseMap != 0) {
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, body->diffuseMap);
                 planetShader.setBool("hasTexture", true);
             }
             else { planetShader.setBool("hasTexture", false); }
+
             if (body->nightMap != 0) {
                 glActiveTexture(GL_TEXTURE2);
                 glBindTexture(GL_TEXTURE_2D, body->nightMap);
                 planetShader.setBool("hasNightTexture", true);
             }
             else if (!isSunObj) { planetShader.setBool("hasNightTexture", false); }
+
             planetShader.setMat4("model", model);
             glDrawElements(GL_TRIANGLES, currentIndices, GL_UNSIGNED_INT, 0);
         }
+
+        // Rysowanie Pierœcieni
         ringShader.use();
         ringShader.setMat4("projection", projection);
         ringShader.setMat4("view", view);
@@ -760,16 +913,20 @@ int main() {
             glDrawElements(GL_TRIANGLES, ringMesh.indexCount, GL_UNSIGNED_INT, 0);
         }
         glDepthMask(GL_TRUE);
+
+        // Rysowanie Ogonów Komet
         glUseProgram(tailShaderProgram);
         glUniformMatrix4fv(glGetUniformLocation(tailShaderProgram, "projection"), 1, GL_FALSE, &projection[0][0]);
         glUniformMatrix4fv(glGetUniformLocation(tailShaderProgram, "view"), 1, GL_FALSE, &view[0][0]);
         glUniform3f(glGetUniformLocation(tailShaderProgram, "color"), 0.6f, 0.8f, 1.0f);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
         for (auto body : solarSystem.bodies) {
             if (body->name.find("Comet") == std::string::npos) continue;
             CometTrail& trail = cometTrails[body->name];
-            if (timeMultiplier > 100000.0) { trail.positions.clear(); continue; }
+            if (timeMultiplier > 1000000.0) { trail.positions.clear(); continue; } // Zbyt szybko na rysowanie ogona
+
             glm::vec3 currentPos = body->worldPosition;
             if (trail.positions.empty()) {
                 trail.positions.push_back(currentPos);
@@ -780,6 +937,7 @@ int main() {
                 if (dist > 0.5f && dist < 1000.0f) {
                     int steps = (int)(dist * 2.0f);
                     if (steps > 100) steps = 100;
+                    // Interpolacja pozycji dla g³adkiego ogona
                     for (int i = 1; i <= steps; ++i) {
                         float t = (float)i / (float)steps;
                         trail.positions.push_back(glm::mix(lastPos, currentPos, t));
@@ -790,19 +948,22 @@ int main() {
                 }
                 else { trail.positions.push_back(currentPos); }
             }
+
             if (trail.positions.size() > 400) {
                 size_t removeCount = trail.positions.size() - 400;
                 trail.positions.erase(trail.positions.begin(), trail.positions.begin() + removeCount);
             }
             if (trail.positions.size() < 2) continue;
+
             std::vector<float> trailData;
             for (size_t i = 0; i < trail.positions.size(); ++i) {
                 trailData.push_back(trail.positions[i].x);
                 trailData.push_back(trail.positions[i].y);
                 trailData.push_back(trail.positions[i].z);
                 float ratio = (float)i / (float)trail.positions.size();
-                trailData.push_back(ratio * ratio);
+                trailData.push_back(ratio * ratio); // Alpha
             }
+
             if (trail.VAO == 0) { glGenVertexArrays(1, &trail.VAO); glGenBuffers(1, &trail.VBO); }
             glBindVertexArray(trail.VAO);
             glBindBuffer(GL_ARRAY_BUFFER, trail.VBO);
@@ -815,13 +976,17 @@ int main() {
             glDrawArrays(GL_LINE_STRIP, 0, (GLsizei)trail.positions.size());
         }
         glDisable(GL_BLEND);
+
+        // Rysowanie efektu Bloom (na S³oñcu)
         glUseProgram(bloomShaderProgram);
         glUniformMatrix4fv(glGetUniformLocation(bloomShaderProgram, "projection"), 1, GL_FALSE, &projection[0][0]);
         glUniformMatrix4fv(glGetUniformLocation(bloomShaderProgram, "view"), 1, GL_FALSE, &view[0][0]);
         glUniform3f(glGetUniformLocation(bloomShaderProgram, "bloomColor"), bloomColor.x, bloomColor.y, bloomColor.z);
         glUniform1f(glGetUniformLocation(bloomShaderProgram, "intensity"), bloomIntensity * eclipseFactor);
+
         glm::mat4 modelBloom = glm::mat4(1.0f);
         modelBloom = glm::translate(modelBloom, glm::vec3(0.0f, 0.0f, 0.0f));
+        // Billboard (zawsze przodem do kamery)
         modelBloom[0][0] = view[0][0];
         modelBloom[0][1] = view[1][0];
         modelBloom[0][2] = view[2][0];
@@ -832,6 +997,7 @@ int main() {
         modelBloom[2][1] = view[1][2];
         modelBloom[2][2] = view[2][2];
         modelBloom = glm::scale(modelBloom, glm::vec3(bloomSize));
+
         glUniformMatrix4fv(glGetUniformLocation(bloomShaderProgram, "model"), 1, GL_FALSE, &modelBloom[0][0]);
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE);
@@ -842,9 +1008,12 @@ int main() {
         glDepthMask(GL_TRUE);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glDisable(GL_BLEND);
+
+        // --- RYSOWANIE GUI (IMGUI) ---
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
         if (!gameStarted) {
             RenderStartScreen(SCR_WIDTH, SCR_HEIGHT);
         }
@@ -867,6 +1036,7 @@ int main() {
             ImGui::Separator();
             ImGui::Text("KAMERA");
             ImGui::SliderFloat("Predkosc Kamery", &baseCameraSpeed, 10.0f, 5000.0f);
+
             const char* currentFocusName = (focusTarget != nullptr) ? focusTarget->name.c_str() : "Wolna Kamera";
             if (ImGui::BeginCombo("Sledz Obiekt", currentFocusName)) {
                 if (ImGui::Selectable("Wolna Kamera", focusTarget == nullptr)) {
@@ -886,6 +1056,7 @@ int main() {
                 }
                 ImGui::EndCombo();
             }
+
             ImGui::Separator();
             ImGui::TextColored(ImVec4(0.5f, 0.8f, 1.0f, 1.0f), "NAWIGACJA ASTEROID");
             if (ImGui::InputInt("Nr (0-99)##Main", &selectedMainAsteroidIdx, 1, 10)) {
@@ -908,6 +1079,7 @@ int main() {
                 }
                 if (!found) std::cout << "BLAD: Nie znaleziono: " << targetName << std::endl;
             }
+
             if (ImGui::InputInt("Nr (0-499)##Kuiper", &selectedKuiperAsteroidIdx, 1, 10)) {
                 if (selectedKuiperAsteroidIdx < 0) selectedKuiperAsteroidIdx = 0;
                 if (selectedKuiperAsteroidIdx > 499) selectedKuiperAsteroidIdx = 499;
@@ -929,6 +1101,7 @@ int main() {
                 if (!found) std::cout << "BLAD: Nie znaleziono: " << targetName << std::endl;
             }
             ImGui::End();
+
             if (showInfoPanel && selectedBody != nullptr) {
                 ImGui::SetNextWindowPos(ImVec2(SCR_WIDTH - 320.0f, 20.0f), ImGuiCond_FirstUseEver);
                 ImGui::SetNextWindowSize(ImVec2(300.0f, 250.0f));
@@ -945,10 +1118,14 @@ int main() {
                 }
                 ImGui::End();
             }
+
+            // Celownik na œrodku ekranu
             if (cursorLocked) {
                 ImDrawList* draw_list = ImGui::GetBackgroundDrawList();
                 draw_list->AddCircle(ImVec2(SCR_WIDTH / 2.0f, SCR_HEIGHT / 2.0f), 3.0f, IM_COL32(255, 255, 255, 100), 12, 2.0f);
             }
+
+            // Ostrze¿enie o granicy œwiata
             float camDist = glm::length(camera.Position);
             float targetAlpha = 0.0f;
             if (camDist > (SYSTEM_BOUNDARY_RADIUS - WARNING_DISTANCE)) {
@@ -963,6 +1140,7 @@ int main() {
                 boundaryWarningAlpha -= fadeSpeed * dt;
                 if (boundaryWarningAlpha < 0.0f) boundaryWarningAlpha = 0.0f;
             }
+
             if (boundaryWarningAlpha > 0.01f) {
                 ImGui::SetNextWindowPos(ImVec2(0, SCR_HEIGHT * 0.4f));
                 ImGui::SetNextWindowSize(ImVec2((float)SCR_WIDTH, 200.0f));
@@ -977,14 +1155,19 @@ int main() {
                 ImGui::End();
             }
         }
+
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    // --- SPRZ¥TANIE PAMIÊCI ---
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
     glfwTerminate();
+
     return 0;
 }

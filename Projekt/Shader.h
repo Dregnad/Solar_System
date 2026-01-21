@@ -86,8 +86,7 @@ public:
         glUseProgram(ID);
     }
 
-    // --- FUNKCJE POMOCNICZE (Te, których brakowa³o!) ---
-    // --- WKLEJ TO DO PLIKU Shader.h W SEKCJI public: ---
+    // --- FUNKCJE POMOCNICZE  ---
 
     void setVec4(const std::string& name, const glm::vec4& value) const
     {
@@ -98,7 +97,6 @@ public:
         glUniform4f(glGetUniformLocation(ID, name.c_str()), x, y, z, w);
     }
 
-    // ----------------------------------------------------
 
     void setBool(const std::string& name, bool value) const
     {

@@ -5,5 +5,6 @@ uniform vec4 orbitColor;
 
 void main()
 {
+    
     FragColor = orbitColor;
 }

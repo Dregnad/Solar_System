@@ -48,11 +48,11 @@ public:
     unsigned int VAO_Orbit = 0;
     std::vector<glm::vec3> orbitPath;
 
-    // --- NOWY KONSTRUKTOR DOMYŒLNY (Rozwi¹zanie Twojego b³êdu) ---
+  
     CelestialBody() {
         position = glm::dvec3(0.0);
         worldPosition = glm::dvec3(0.0);
-        color = glm::vec3(0.5f); // Domyœlny szary
+        color = glm::vec3(0.5f); 
         radius = 1.0;
         rotationPeriod = 0.0;
         axialTilt = 0.0;
@@ -69,7 +69,7 @@ public:
         ringMap = 0;
         VAO_Orbit = 0;
     }
-    // -------------------------------------------------------------
+   
 
     CelestialBody(std::string n, double r, OrbitalElements o, double rotP, double tilt, CelestialBody* p = nullptr)
         : name(n), radius(r), orbit(o), rotationPeriod(rotP), axialTilt(tilt), parent(p), currentRotationAngle(0.0)
@@ -77,20 +77,20 @@ public:
         diffuseMap = 0;
         nightMap = 0;
         ringMap = 0;
-        color = glm::vec3(1.0f, 1.0f, 1.0f); // Default white
+        color = glm::vec3(1.0f, 1.0f, 1.0f); 
 
-        // Inicjalizacja wektorów, ¿eby unikn¹æ œmieci w pamiêci
+       
         position = glm::dvec3(0.0);
         worldPosition = glm::dvec3(0.0);
 
         if (parent) {
             parent->children.push_back(this);
-            // Generate the visual orbit line immediately
+          
             generateFullOrbit(500);
         }
     }
 
-    // Solve Kepler's Equation for Eccentric Anomaly E
+  
     double solveKepler(double M, double e) {
         double E = M;
         for (int i = 0; i < 30; i++) {
@@ -101,15 +101,15 @@ public:
         return E;
     }
 
-    // Calculate position relative to the primary body (Sun/Earth)
+    
     glm::dvec3 calculatePosition(double M) {
         double E = solveKepler(M, orbit.eccentricity);
 
-        // Position in orbital plane
+       
         double x_orb = orbit.semiMajorAxis * (cos(E) - orbit.eccentricity);
         double y_orb = orbit.semiMajorAxis * sqrt(1.0 - orbit.eccentricity * orbit.eccentricity) * sin(E);
 
-        // Rotations based on orbital elements
+      
         double i = glm::radians(orbit.inclination);
         double om = glm::radians(orbit.ascendingNode);
         double w = glm::radians(orbit.periapsis);
@@ -125,11 +125,11 @@ public:
         double y3 = x2 * sin(om) + y2 * cos(om);
         double z3 = z2;
 
-        // IMPORTANT: Multiply by AU_SCALE so the Moon isn't inside the Earth
+       
         return glm::dvec3(x3, z3, -y3) * AU_SCALE;
     }
 
-    // Pre-calculate the orbit path for the blue lines
+    
     void generateFullOrbit(int segments) {
         orbitPath.clear();
         for (int i = 0; i <= segments; i++) {
@@ -139,38 +139,29 @@ public:
         }
     }
 
-    // Physics Update
     void update(double timeDays) {
         if (parent == nullptr) {
-            // The Sun stays at 0,0,0
-            // Dla asteroid bez rodzica (Kuiper Belt) te¿ chcemy, ¿eby sta³y w miejscu (statyczne),
-            // ale one maj¹ ju¿ ustalon¹ worldPosition w main.cpp.
-            // Poni¿szy warunek "parent == nullptr" dotyczy S³oñca.
-            // Asteroidy z Pasa Kuipera maj¹ parent = nullptr, ale nie chcemy resetowaæ ich pozycji do 0,0,0.
-            // S³oñce rozpoznajemy po nazwie lub po tym, ¿e to ono jest w centrum (0,0,0).
+     
 
             if (name == "Sun") {
                 position = glm::dvec3(0.0);
                 worldPosition = position;
             }
-            // Jeœli to obiekt Pasa Kuipera (nie ma rodzica, ale nie jest s³oñcem), 
-            // nie aktualizujemy pozycji orbitalnej, zostaje tam gdzie go postawiliœmy w main().
+           
         }
         else {
-            // Calculate Mean Anomaly based on time
-            // Formula: n = 2*PI / Period(years converted to days)
+           
             double n = (2.0 * PI) / (orbit.orbitalPeriod * 365.25);
             double M = glm::radians(orbit.meanAnomalyEpoch) + n * timeDays;
 
-            // 1. Calculate relative position (offset from parent)
+          
             position = calculatePosition(M);
 
-            // 2. Add Parent's world position to get actual position
-            // Since Earth updates BEFORE Moon (in the vector), Earth's worldPosition is already fresh.
+           
             worldPosition = parent->worldPosition + position;
         }
 
-        // Handle Self-Rotation
+      
         if (rotationPeriod > 0.0) {
             double angleChange = (360.0 / rotationPeriod) * simulationSpeed * deltaTimeDouble;
             currentRotationAngle = fmod(currentRotationAngle + angleChange, 360.0);

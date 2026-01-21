@@ -1,5 +1,3 @@
 #pragma once
-#include <glad/glad.h> // Potrzebne, by znaæ typy OpenGL
-
-// Deklaracja funkcji ³adowania tekstury
+#include <glad/glad.h> 
 unsigned int loadTexture(const char* path);

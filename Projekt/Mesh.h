@@ -10,7 +10,7 @@ struct SphereMesh {
     unsigned int indexCount;
 };
 
-// --- FUNKCJA GENERUJ¥CA SFERÊ (POPRAWIONA - SZCZELNA DLA LOW POLY) ---
+//FUNKCJA GENERUJ¥CA SFERÊ 
 inline SphereMesh generateSphere(unsigned int sectorCount, unsigned int stackCount) {
     SphereMesh mesh;
     std::vector<float> data;
@@ -61,7 +61,7 @@ inline SphereMesh generateSphere(unsigned int sectorCount, unsigned int stackCou
         }
     }
 
-    // 2. GENEROWANIE INDEKSÓW (Trójk¹ty)
+    // 2. GENEROWANIE INDEKSÓW 
     int k1, k2;
     for (unsigned int i = 0; i < stackCount; ++i)
     {
@@ -70,7 +70,7 @@ inline SphereMesh generateSphere(unsigned int sectorCount, unsigned int stackCou
 
         for (unsigned int j = 0; j < sectorCount; ++j, ++k1, ++k2)
         {
-            // Dwa trójk¹ty na sektor (oprócz biegunów gdzie jest jeden)
+            // Dwa trójk¹ty na sektor
             if (i != 0)
             {
                 indices.push_back(k1);
@@ -102,7 +102,6 @@ inline SphereMesh generateSphere(unsigned int sectorCount, unsigned int stackCou
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned int), &indices[0], GL_STATIC_DRAW);
 
-    // Stride: 3 pos + 3 norm + 2 uv = 8 floats
     long long stride = 8 * sizeof(float);
     
     // Position
